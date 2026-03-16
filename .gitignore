@@ -1,0 +1,11 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Saved maps (user generated)
+maps/
+
+# Screenshots (except demo)
+screenshots/*
+!screenshots/demo.png
