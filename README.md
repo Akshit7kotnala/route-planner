@@ -1,80 +1,121 @@
 # 🗺️ A* Route Planner — Pollution & Traffic Aware
 
-A desktop pathfinding visualizer built in Python that goes beyond
-shortest distance — it finds the **cleanest** and **fastest** routes
-through an interactive India city map with live traffic simulation.
+A route planning project with two interfaces:
+
+- a **Python + Pygame desktop visualizer**
+- a **React + Vite web frontend**
+
+It explores pathfinding beyond shortest distance by comparing **fastest** and **cleanest** routes across an interactive India city map with live traffic simulation.
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![Pygame](https://img.shields.io/badge/Pygame-2.6-green)
+![React](https://img.shields.io/badge/React-19-blue)
+![Vite](https://img.shields.io/badge/Vite-8-yellow)
 ![Algorithm](https://img.shields.io/badge/Algorithm-A*-orange)
 ![License](https://img.shields.io/badge/License-MIT-purple)
 
 ---
 
-## 🎥 Demo
+## Live Demo
 
-> *Select two cities → watch A* find the optimal path in real time*
-
-![Demo](screenshots/demo.png)
+- Web app: [https://route-planner-black.vercel.app/](https://route-planner-black.vercel.app/)
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Algorithm
-- **A* Pathfinding** with step-by-step animation
-- **Multi-objective cost function** — balances distance + pollution
-- **3 heuristics** — Euclidean, Manhattan, Diagonal (switchable live)
-- **Generator-based animation** — one step per frame, fully controllable
+- **A* pathfinding** with visual exploration
+- **Multi-objective cost function** balancing distance, traffic, and pollution
+- **3 heuristics**: Euclidean, Manhattan, Diagonal
+- **Algorithm comparison** with A*, Dijkstra, and BFS
 
 ### Routing Modes
-- ⚡ **Fastest Mode** — minimizes distance only
-- 🌿 **Cleanest Mode** — avoids high AQI pollution roads
-- **Dual path display** — both routes shown simultaneously
-- **AQI savings comparison** — shows % pollution reduction
+- **Fastest mode** for shortest traffic-adjusted route
+- **Cleanest mode** for lower AQI exposure
+- **Dual path display** showing fastest and cleanest alternatives
+- **AQI savings comparison**
 
-### Live Traffic Simulation
-- Roads randomly change between Clear → Moderate → Heavy → Jammed
-- **Auto-reroutes** every time traffic updates
-- Color-coded roads by congestion level
-- Live traffic ticker at bottom of screen
+### Simulation Features
+- **Live traffic updates** with rerouting
+- **Road blocking** by user interaction
+- **Random map generation**
+- **Tooltip stats** for nodes and edges
 
-### Dynamic Re-routing
-- **Right click any road** to block it
-- Path **instantly recalculates** avoiding blocked road
-- Simulates real-world road closures like Google Maps
-
-### Algorithm Comparison
-- Run **A* vs Dijkstra vs BFS** on same route
-- Side-by-side stats: nodes explored, distance, time
-- ★ badge highlights most efficient algorithm
-
-### Map Features
-- **30 Indian cities** with real approximate distances
-- **Random map generator** — new city layouts on demand
-- **Save/Load maps** to JSON — share custom maps
-- **Node hover tooltip** — see live g, h, f costs + AQI
+### Interfaces
+- **Desktop app** built with Pygame
+- **Web app** built with React, Vite, and Canvas rendering
 
 ---
 
-## 🚀 Quick Start
+## Project Structure
+
+```text
+Planning_project/
+├── core/                  # Python graph + pathfinding logic
+├── visualization/         # Python Pygame rendering
+├── utils/                 # Python helpers
+├── maps/                  # Saved map JSON files
+├── screenshots/           # Saved screenshots
+├── frontend/              # React + Vite web app
+│   ├── src/
+│   │   ├── components/
+│   │   ├── core/
+│   │   ├── hooks/
+│   │   └── visualization/
+│   ├── package.json
+│   └── vite.config.js
+├── main.py                # Python desktop entry point
+└── README.md
+```
+
+---
+
+## Run The Python App
 
 ### Prerequisites
+
 ```bash
-python --version   # needs 3.10+
-pip install pygame
+python3 --version
+python3 -m pip install pygame
 ```
 
 ### Run
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/route-planner.git
-cd route-planner
-python main.py
+cd ~/Downloads/Planning_project
+python3 main.py
 ```
 
 ---
 
-## 🎮 Controls
+## Run The Web App
+
+### Prerequisites
+
+```bash
+node --version
+npm --version
+```
+
+### Run
+
+```bash
+cd ~/Downloads/Planning_project/frontend
+npm install
+npm run dev
+```
+
+### Build
+
+```bash
+cd ~/Downloads/Planning_project/frontend
+npm run build
+```
+
+---
+
+## Desktop Controls
 
 | Key | Action |
 |-----|--------|
@@ -96,99 +137,56 @@ python main.py
 
 ---
 
-## 📁 Project Structure
-```
-route-planner/
-│
-├── core/
-│   ├── node.py          # City node with g/h/f costs
-│   ├── graph.py         # India map + traffic simulation
-│   ├── astar.py         # A* with animation + silent mode
-│   ├── algorithms.py    # BFS + Dijkstra for comparison
-│   ├── heuristics.py    # Euclidean, Manhattan, Diagonal
-│   ├── map_generator.py # Random city map generator
-│   └── map_io.py        # Save/load maps to JSON
-│
-├── visualization/
-│   ├── display.py       # Pygame drawing engine
-│   └── controls.py      # Mouse + keyboard input
-│
-├── utils/
-│   └── timer.py         # Performance measurement
-│
-├── maps/                # Saved map JSON files
-├── screenshots/         # Saved screenshots
-├── main.py              # Entry point
-└── README.md
-```
+## How A* Works
 
----
+A* uses:
 
-## 🧠 How A* Works
-
-A* finds the shortest path using:
-```
+```text
 f(n) = g(n) + h(n)
 ```
 
-- **g(n)** → actual cost from start to current node
-- **h(n)** → heuristic estimate to goal (Euclidean distance)
-- **f(n)** → total estimated cost — lowest f explored first
+- `g(n)` = actual travel cost so far
+- `h(n)` = estimated remaining distance
+- `f(n)` = total estimated route score
 
-### Pollution-Weighted Cost Function
-```
+For cleaner routing, the edge cost also includes pollution and traffic weighting.
+
+```text
 edge_cost = distance × traffic_multiplier
           + pollution_weight × AQI_score × traffic_multiplier
 ```
 
-This makes A* prefer roads that are both short AND clean —
-exactly how modern navigation apps balance time vs air quality.
-
 ---
 
-## 📊 Algorithm Comparison
-
-| Algorithm | Uses Weights | Uses Heuristic | Result |
-|-----------|-------------|----------------|--------|
-| BFS | ❌ | ❌ | Shortest hops, not distance |
-| Dijkstra | ✅ | ❌ | Optimal distance, explores more |
-| A* | ✅ | ✅ | Optimal distance, explores least |
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Python 3.12**
-- **Pygame 2.6** — visualization and input
-- **heapq** — priority queue for A*
-- **collections.deque** — queue for BFS
-- **JSON** — map save/load format
+- **Pygame 2.6**
+- **React 19**
+- **Vite 8**
+- **JavaScript Canvas rendering**
+- **JSON** for saved maps
 
 ---
 
-## 📸 Screenshots
+## Roadmap
 
-| India Map | Comparison Panel |
-|-----------|-----------------|
-| ![map](screenshots/demo.png) | ![comparison](screenshots/demo.png) |
-
----
-
-## 🔮 Roadmap
-
-- [ ] Web version (React + Canvas)
+- [x] Web version with React + Vite
+- [ ] Improve frontend interaction polish
 - [ ] Real GPS coordinates for Indian cities
 - [ ] Multiple simultaneous route comparison
-- [ ] Export path as KML for Google Maps
+- [ ] Export path data for external map tools
 
 ---
 
-## 👨‍💻 Author
+## Author
 
-**Akshit** — Backend Engineer & CS Student
--  GitHub: [@Akshit7kotnala](https://github.com/Akshit7kotnala)
+**Akshit**
+
+- GitHub: [@Akshit7kotnala](https://github.com/Akshit7kotnala)
+
 ---
 
-## 📄 License
+## License
 
 MIT License — feel free to use and modify.
