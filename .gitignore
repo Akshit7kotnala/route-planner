@@ -9,3 +9,7 @@ maps/
 # Screenshots (except demo)
 screenshots/*
 !screenshots/demo.png
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
