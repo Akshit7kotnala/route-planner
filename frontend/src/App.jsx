@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import MapCanvas from './components/MapCanvas.jsx';
 import ControlPanel from './components/ControlPanel.jsx';
 import ComparisonModal from './components/ComparisonModal.jsx';
@@ -37,7 +37,7 @@ export default function App() {
     toggleTraffic,
   } = useAstar();
 
-  const handleKey = (e) => {
+  const handleKey = useCallback((e) => {
     if (e.code === 'Space') {
       e.preventDefault();
       runAstar();
@@ -48,13 +48,12 @@ export default function App() {
     if (e.code === 'KeyT') toggleTraffic();
     if (e.code === 'KeyC') runComparison();
     if (e.code === 'KeyG') newRandomMap();
-  };
+  }, [cycleHeuristic, newRandomMap, reset, runAstar, runComparison, toggleMode, toggleTraffic]);
 
   useEffect(() => {
-    const onKeyDown = (e) => handleKey(e);
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [runAstar, reset, cycleHeuristic, toggleMode, toggleTraffic, runComparison, newRandomMap]);
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [handleKey]);
 
   return (
     <div style={styles.app}>

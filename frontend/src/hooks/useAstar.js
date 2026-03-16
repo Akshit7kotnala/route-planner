@@ -25,9 +25,14 @@ export function useAstar() {
   const [timeMs, setTimeMs] = useState(0);
 
   const astarRef = useRef(null);
+  const graphRef = useRef(graph);
   const animFrameRef = useRef(null);
   const trafficIntervalRef = useRef(null);
   const startTimeRef = useRef(null);
+
+  useEffect(() => {
+    graphRef.current = graph;
+  }, [graph]);
 
   // -- Helpers ------------------------------------------------
   const resetPaths = useCallback(() => {
@@ -43,14 +48,19 @@ export function useAstar() {
     forceRender();
   }, []);
 
-  const silentRun = useCallback((g, currentMode, h) => {
-    const clone = g.clone();
-    const silent = new AStar(clone, h, currentMode, 50);
-    const path = silent.run(
-      g.nodes[Object.keys(g.nodes).find((k) => g.nodes[k].state === 'start')],
-      null
-    );
-    return { clone, silent, path };
+  const markEndpoints = useCallback(() => {
+    const currentGraph = graphRef.current;
+    if (startName && currentGraph.nodes[startName]) {
+      currentGraph.nodes[startName].state = 'start';
+    }
+    if (goalName && currentGraph.nodes[goalName]) {
+      currentGraph.nodes[goalName].state = 'end';
+    }
+  }, [goalName, startName]);
+
+  const clearTimers = useCallback(() => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
   }, []);
 
   const reroute = useCallback((g, sName, gName, h) => {
@@ -75,6 +85,7 @@ export function useAstar() {
   // -- City click --------------------------------------------
   const handleCityClick = useCallback(
     (node) => {
+      const currentGraph = graphRef.current;
       if (!startName) {
         node.state = 'start';
         setStartName(node.name);
@@ -86,53 +97,63 @@ export function useAstar() {
         setGoalName(node.name);
         setStatus('Press SPACE or Run button');
         refreshGraph();
+      } else {
+        currentGraph.reset();
+        setStartName(node.name);
+        setGoalName(null);
+        resetPaths();
+        setStatus('Click a city -> GOAL');
+        node.state = 'start';
+        refreshGraph();
       }
     },
-    [goalName, refreshGraph, startName]
+    [goalName, refreshGraph, resetPaths, startName]
   );
 
   // -- Block road --------------------------------------------
   const handleBlockEdge = useCallback(
     (nameA, nameB) => {
-      graph.blockEdge(nameA, nameB);
+      const currentGraph = graphRef.current;
+      currentGraph.blockEdge(nameA, nameB);
+      markEndpoints();
       refreshGraph();
       if (startName && goalName) {
-        reroute(graph, startName, goalName, heuristic);
+        reroute(currentGraph, startName, goalName, heuristic);
       }
     },
-    [goalName, graph, heuristic, refreshGraph, reroute, startName]
+    [goalName, heuristic, markEndpoints, refreshGraph, reroute, startName]
   );
 
   // -- Run A* animation --------------------------------------
   const runAstar = useCallback(() => {
+    const currentGraph = graphRef.current;
     if (!startName || !goalName) return;
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
 
+    resetPaths();
+    setRecentChanges([]);
+
     if (mode === 'fastest') {
-      const gc = graph.clone();
+      const gc = currentGraph.clone();
       const s = new AStar(gc, heuristic, 'cleanest', 50);
       setCleanPath(s.run(startName, goalName));
-      graph.nodes[startName].state = 'start';
-      graph.nodes[goalName].state = 'end';
     } else {
-      const gc = graph.clone();
+      const gc = currentGraph.clone();
       const s = new AStar(gc, heuristic, 'fastest', 50);
       setFastPath(s.run(startName, goalName));
-      graph.nodes[startName].state = 'start';
-      graph.nodes[goalName].state = 'end';
     }
 
-    graph.reset();
-    graph.nodes[startName].state = 'start';
-    graph.nodes[goalName].state = 'end';
+    currentGraph.reset();
+    markEndpoints();
 
-    const astar = new AStar(graph, heuristic, mode, 50);
+    const astar = new AStar(currentGraph, heuristic, mode, 50);
     astar.initialize(startName, goalName);
     astarRef.current = astar;
     startTimeRef.current = performance.now();
     setAnimating(true);
     setStatus(`Searching (${mode})...`);
-  }, [graph, startName, goalName, heuristic, mode]);
+    refreshGraph();
+  }, [goalName, heuristic, markEndpoints, mode, refreshGraph, resetPaths, startName]);
 
   // -- Animation loop ----------------------------------------
   useEffect(() => {
@@ -177,26 +198,29 @@ export function useAstar() {
     }
 
     trafficIntervalRef.current = setInterval(() => {
-      const changed = graph.updateTraffic(0.25);
+      const currentGraph = graphRef.current;
+      const changed = currentGraph.updateTraffic(0.25);
       setRecentChanges(changed.slice(-4));
+      markEndpoints();
       refreshGraph();
 
       if (startName && goalName && !animating) {
-        reroute(graph, startName, goalName, heuristic);
+        reroute(currentGraph, startName, goalName, heuristic);
       }
     }, 5000);
 
     return () => clearInterval(trafficIntervalRef.current);
-  }, [trafficOn, graph, startName, goalName, animating, heuristic, refreshGraph, reroute]);
+  }, [trafficOn, startName, goalName, animating, heuristic, markEndpoints, refreshGraph, reroute]);
 
   // -- Algorithm comparison ----------------------------------
   const runComparison = useCallback(() => {
+    const currentGraph = graphRef.current;
     if (!startName || !goalName) return;
 
     const algorithms = [
-      { name: 'A*', algo: new AStar(graph.clone(), heuristic) },
-      { name: 'Dijkstra', algo: new Dijkstra(graph.clone()) },
-      { name: 'BFS', algo: new BFS(graph.clone()) },
+      { name: 'A*', algo: new AStar(currentGraph.clone(), heuristic) },
+      { name: 'Dijkstra', algo: new Dijkstra(currentGraph.clone()) },
+      { name: 'BFS', algo: new BFS(currentGraph.clone()) },
     ];
 
     const results = algorithms.map(({ name, algo }) => {
@@ -228,33 +252,33 @@ export function useAstar() {
       found.reduce((a, b) => (a.nodesExplored < b.nodesExplored ? a : b)).winner = true;
     }
 
-    graph.reset();
-    if (startName) graph.nodes[startName].state = 'start';
-    if (goalName) graph.nodes[goalName].state = 'end';
+    currentGraph.reset();
+    markEndpoints();
     refreshGraph();
 
     setCompResults(results);
     setShowComp(true);
-  }, [goalName, graph, heuristic, refreshGraph, startName]);
+  }, [goalName, heuristic, markEndpoints, refreshGraph, startName]);
 
   // -- Reset --------------------------------------------------
   const reset = useCallback(() => {
-    cancelAnimationFrame(animFrameRef.current);
+    const currentGraph = graphRef.current;
+    clearTimers();
     setAnimating(false);
-    graph.reset();
+    currentGraph.reset();
     setStartName(null);
     setGoalName(null);
     resetPaths();
     setStatus('Click a city -> START');
     setRecentChanges([]);
     refreshGraph();
-  }, [graph, refreshGraph, resetPaths]);
+  }, [clearTimers, refreshGraph, resetPaths]);
 
   // -- New random map ----------------------------------------
   const newRandomMap = useCallback(() => {
-    cancelAnimationFrame(animFrameRef.current);
-    clearInterval(trafficIntervalRef.current);
+    clearTimers();
     const g = generateRandomMap(20);
+    graphRef.current = g;
     setGraph(g);
     setStartName(null);
     setGoalName(null);
@@ -263,13 +287,13 @@ export function useAstar() {
     resetPaths();
     setStatus('Click a city -> START');
     setRecentChanges([]);
-  }, [resetPaths]);
+  }, [clearTimers, resetPaths]);
 
   // -- Load India map ----------------------------------------
   const loadIndiaMap = useCallback(() => {
-    cancelAnimationFrame(animFrameRef.current);
-    clearInterval(trafficIntervalRef.current);
+    clearTimers();
     const g = createIndiaMap();
+    graphRef.current = g;
     setGraph(g);
     setStartName(null);
     setGoalName(null);
@@ -278,41 +302,41 @@ export function useAstar() {
     resetPaths();
     setStatus('Click a city -> START');
     setRecentChanges([]);
-  }, [resetPaths]);
+  }, [clearTimers, resetPaths]);
 
   const unblockAll = useCallback(() => {
-    graph.unblockAll();
-    if (startName) graph.nodes[startName].state = 'start';
-    if (goalName) graph.nodes[goalName].state = 'end';
+    const currentGraph = graphRef.current;
+    currentGraph.unblockAll();
+    markEndpoints();
     refreshGraph();
 
     if (startName && goalName && !animating) {
-      reroute(graph, startName, goalName, heuristic);
+      reroute(currentGraph, startName, goalName, heuristic);
     }
-  }, [animating, goalName, graph, heuristic, refreshGraph, reroute, startName]);
+  }, [animating, goalName, heuristic, markEndpoints, refreshGraph, reroute, startName]);
 
   const toggleMode = useCallback(() => {
     setMode((current) => {
       const nextMode = current === 'fastest' ? 'cleanest' : 'fastest';
       if (startName && goalName && !animating) {
-        reroute(graph, startName, goalName, heuristic);
+        reroute(graphRef.current, startName, goalName, heuristic);
         setStatus(`Mode: ${nextMode}`);
       }
       return nextMode;
     });
-  }, [animating, goalName, graph, heuristic, reroute, startName]);
+  }, [animating, goalName, heuristic, reroute, startName]);
 
   const cycleHeuristic = useCallback(() => {
     setHeuristic((current) => {
       const idx = HEURISTIC_NAMES.indexOf(current);
       const nextHeuristic = HEURISTIC_NAMES[(idx + 1) % HEURISTIC_NAMES.length];
       if (startName && goalName && !animating) {
-        reroute(graph, startName, goalName, nextHeuristic);
+        reroute(graphRef.current, startName, goalName, nextHeuristic);
         setStatus(`Heuristic: ${nextHeuristic}`);
       }
       return nextHeuristic;
     });
-  }, [animating, goalName, graph, reroute, startName]);
+  }, [animating, goalName, reroute, startName]);
 
   const toggleTraffic = useCallback(() => {
     setTrafficOn((current) => {
@@ -355,6 +379,5 @@ export function useAstar() {
     toggleMode,
     cycleHeuristic,
     toggleTraffic,
-    silentRun,
   };
 }

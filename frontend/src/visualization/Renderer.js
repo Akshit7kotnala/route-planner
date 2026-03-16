@@ -54,7 +54,7 @@ export class Renderer {
     const drawn = new Set();
 
     Object.values(graph.nodes).forEach((node) => {
-      node.neighbors.forEach(({ node: nb, distance, pollution, traffic }) => {
+      node.neighbors.forEach(({ node: nb, distance, traffic }) => {
         const key = [node.name, nb.name].sort().join('|');
         if (drawn.has(key)) return;
         drawn.add(key);
