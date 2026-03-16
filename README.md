@@ -186,9 +186,7 @@ exactly how modern navigation apps balance time vs air quality.
 ## 👨‍💻 Author
 
 **Akshit** — Backend Engineer & CS Student
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
-- Portfolio: [your-portfolio-link]
-
+-  GitHub: [@Akshit7kotnala](https://github.com/Akshit7kotnala)
 ---
 
 ## 📄 License
